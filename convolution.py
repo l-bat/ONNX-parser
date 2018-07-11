@@ -35,5 +35,4 @@ output = conv(input)
 print(input.shape)
 print(output.shape)
 
-
-#torch.onnx.export(conv, input, "convolution.onnx")
+torch.onnx.export(conv, input, "convolution.onnx")
