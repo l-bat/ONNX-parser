@@ -4,7 +4,7 @@
 
 #include "onnx.pb.h"
 
- using namespace std;
+using namespace std;
 
 void get_weight (const onnx::GraphProto& graph_proto) {
   for(int i = 0; i < graph_proto.initializer_size(); i++) {
@@ -48,24 +48,26 @@ void get_layer_params (const onnx::NodeProto& node_proto) {
     int kernel_h, kernel_w;
     int dilation_h, dilation_w;
 
-    // int group_h = -1, group_w = -1;
+    int group = -1;
 
-    for(int i = 0; i < node_proto.attribute_size(); i++) {
-      const onnx::AttributeProto& attribute_proto = node_proto.attribute(i);
-      std::string attribute_name = attribute_proto.name();
+  std::cout << "quantity of attribute = " << node_proto.attribute_size() << '\n';
+  for(int i = 0; i < node_proto.attribute_size(); i++) {
+    const onnx::AttributeProto& attribute_proto = node_proto.attribute(i);
+    std::string attribute_name = attribute_proto.name();
+    std::cout << "attribute[" << i << "] = " << attribute_name << '\n';
 
 // TO DO: add groups and bias to hyperparams
+
       if(attribute_name == "dilations") {
         dilation_h = attribute_proto.ints(0);
         std::cout << "dilation height: " << dilation_h << '\n';
         dilation_w = attribute_proto.ints(1);
         std::cout << "dilation widht: " << dilation_w << '\n';
-      } /*else if(attribute_name == "group") {
-        group_h = attribute_proto.ints(0);
-        std::cout << "group height: " << group_h << '\n';
-        // group_w = attribute_proto.ints(1);
-        // std::cout << "group widht: " << group_w << '\n';
-      } */ else if(attribute_name == "kernel_shape") {
+      } else if(attribute_name == "group") {
+       std::cout << attribute_proto.ByteSizeLong() << '\n';
+       group = attribute_proto.i();
+       std::cout << "group: " << group << '\n';
+      } else if(attribute_name == "kernel_shape") {
         kernel_h = attribute_proto.ints(0);
         std::cout << "kernel height: " << kernel_h << '\n';
         kernel_w = attribute_proto.ints(1);
@@ -84,6 +86,38 @@ void get_layer_params (const onnx::NodeProto& node_proto) {
 
     }
   }
+  else if(layer_type == "MaxPool") {
+    std::cout << "_______maxpooling layer_______" << '\n';
+    int pad_h, pad_w;
+    int stride_h, stride_w;
+    int kernel_h, kernel_w;
+
+    std::cout << "quantity of attribute = " << node_proto.attribute_size() << '\n';
+    for(int i = 0; i < node_proto.attribute_size(); i++) {
+      const onnx::AttributeProto& attribute_proto = node_proto.attribute(i);
+      std::string attribute_name = attribute_proto.name();
+      std::cout << "attribute[" << i << "] = " << attribute_name << '\n';
+
+      if(attribute_name == "strides") {
+        stride_h = attribute_proto.ints(0);
+        std::cout << "stride height: " << stride_h << '\n';
+        stride_w = attribute_proto.ints(1);
+        std::cout << "stride width: " << stride_w << '\n';
+      }
+      else if(attribute_name == "pads") {
+        pad_h = attribute_proto.ints(0);
+        std::cout << "pad height: " << pad_h << '\n';
+        pad_w = attribute_proto.ints(1);
+        std::cout << "pad width: " << pad_w << '\n';
+      }
+      else if(attribute_name == "kernel_shape") {
+        kernel_h = attribute_proto.ints(0);
+        std::cout << "kernel height: " << kernel_h << '\n';
+        kernel_w = attribute_proto.ints(1);
+        std::cout << "kernel width: " << kernel_w << '\n';
+      }
+    }
+  }
 }
 
 void parse_onnx_model(const onnx::ModelProto& model_proto) {
@@ -93,9 +127,9 @@ void parse_onnx_model(const onnx::ModelProto& model_proto) {
     std::cout << "Parsing the onnx model." << std::endl;
     graph_proto = model_proto.graph();
   }
-  if(graph_proto.has_name()) {
-		std::cout << "Extracting the widths for : " << graph_proto.name() << std::endl;
-	}
+  // if(graph_proto.has_name()) {
+	// 	std::cout << "Extracting the weights for : " << graph_proto.name() << std::endl;
+	// }
 //  get_weight(graph_proto);
 
   for(int i = 0; i < graph_proto.node_size(); i++) {
