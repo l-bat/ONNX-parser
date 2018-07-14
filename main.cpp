@@ -2,11 +2,9 @@
 #include <fstream>
 #include <string>
 #include <opencv2/dnn/all_layers.hpp>
-//#include </home/liubov/work_spase/opencv/modules/dnn/test/npy_blob.cpp>
 #include "onnx.pb.h"
 
 using namespace std;
-
 
 void get_weight (const onnx::GraphProto& graph_proto) {
   for(int i = 0; i < graph_proto.initializer_size(); i++) {
@@ -34,7 +32,7 @@ void get_weight (const onnx::GraphProto& graph_proto) {
   }
 }
 
-void print_layer_params (const onnx::NodeProto& node_proto) {
+void print_layer_params(const onnx::NodeProto& node_proto) {
   // for (int i = 0; i < node_proto.input_size(); i++) {
   //   std::cout << "Input: " << node_proto.input(i) << '\n';
   // }
@@ -118,6 +116,21 @@ void print_layer_params (const onnx::NodeProto& node_proto) {
       }
     }
   }
+  else if(layer_type == "LRN") {
+
+    int lrn_size;
+
+    std::cout << "quantity of attribute = " << node_proto.attribute_size() << '\n';
+    for(int i=0; i < node_proto.attribute_size(); i++) {
+      const onnx::AttributeProto& attribute_proto = node_proto.attribute(i);
+      std::string attribute_name = attribute_proto.name();
+      std::cout << "attribute[" << i << "] = " << attribute_name << '\n';
+
+      // if(attribute_name == "size") {
+      //   lrn_size = attribute_proto.i();
+      // }
+    }
+  }
 }
 
 std::unordered_map<std::string, int> get_layer_params(const onnx::NodeProto& node_proto) {
@@ -162,6 +175,10 @@ std::unordered_map<std::string, int> get_layer_params(const onnx::NodeProto& nod
   }
   return params;
 }
+//
+// cv::dnn::Net create_net () {
+//
+// }
 
 void parse_onnx_model(const onnx::ModelProto& model_proto) {
   onnx::GraphProto graph_proto;
@@ -170,17 +187,11 @@ void parse_onnx_model(const onnx::ModelProto& model_proto) {
     std::cout << "Parsing the onnx model." << std::endl;
     graph_proto = model_proto.graph();
   }
-  // if(graph_proto.has_name()) {
-	// 	std::cout << "Extracting the weights for : " << graph_proto.name() << std::endl;
-	// }
-//  get_weight(graph_proto);
-
   for(int i = 0; i < graph_proto.node_size(); i++) {
       node_proto = graph_proto.node(i);
       print_layer_params(node_proto);
   }
 }
-
 
 void print_matrix (cv::Mat mat, int* size) {
   for (int i = 0; i < size[0]; i++)
@@ -240,8 +251,8 @@ cv::Mat blobFromNPY(const std::string& path) {
 int main(int argc, char const *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  if (argc != 2) {
-    std::cerr << "Usage: " << argv[0] << " ONNX_FILE" << '\n';
+  if (argc != 4) {
+    std::cerr << "Usage: " << argv[0] << " ONNX_FILE, input and output" << '\n';
     return -1;
   }
 
@@ -260,34 +271,37 @@ int main(int argc, char const *argv[]) {
   google::protobuf::ShutdownProtobufLibrary();
 
   onnx::GraphProto graph_proto = model_proto.graph();
-  onnx::NodeProto node_proto;
   std::unordered_map<std::string, int> params;
   cv::dnn::LayerParams lp;
   cv::dnn::Net net;
-cv::Mat inputBlob = blobFromNPY("input.npy");
-  for(int i = 0; i < graph_proto.node_size(); i++) {
-      node_proto = graph_proto.node(i);
-      params = get_layer_params(node_proto);
-      std::cout << "params contains: " << '\n';
-      for (auto& x: params)
-        std::cout << x.first << ": " << x.second << std::endl;
+//  cv::Mat inputBlob = blobFromNPY("input_2max_pool.npy");
 
-      lp.name = "MaxPool";
-      lp.type = "Pooling";
-      lp.set("kernel_h", params["kernel_h"]);
-      lp.set("kernel_w", params["kernel_w"]);
-      lp.set("pad_h", params["pad_h"]);
-      lp.set("pad_w", params["pad_w"]);
-      lp.set("stride_h", params["stride_h"]);
-      lp.set("stride_w", params["stride_w"]);
-      lp.set("pool", "MAX");
-      net.addLayerToPrev(lp.name, lp.type, lp);
-      net.setInput(inputBlob);
-      cv::Mat output = net.forward();
-  }
-
-
+  // for(int i = 0; i < graph_proto.node_size(); i++) {
+  //     onnx::NodeProto node_proto = graph_proto.node(i);
+  //     params = get_layer_params(node_proto);
   //
+  //     lp.name = "MaxPool_" + std::to_string(i);
+  //     lp.type = "Pooling";
+  //     lp.set("kernel_h", params["kernel_h"]);
+  //     lp.set("kernel_w", params["kernel_w"]);
+  //     lp.set("pad_h", params["pad_h"]);
+  //     lp.set("pad_w", params["pad_w"]);
+  //     lp.set("stride_h", params["stride_h"]);
+  //     lp.set("stride_w", params["stride_w"]);
+  //     lp.set("pool", "MAX");
+  //     net.addLayerToPrev(lp.name, lp.type, lp);
+  // }
+  //
+  // net.setInput(blobFromNPY(argv[2]));
+  //
+  // cv::Mat output = net.forward();
+  // std::cout << output.size << '\n';
+  // cv::Mat outputBlob = blobFromNPY(argv[3]);
+  // std::cout << outputBlob.size << '\n';
+  // double normL2 = cv::norm(output, outputBlob, cv::NORM_INF);
+  // std::cout << "norm = " << normL2 << '\n';
+
+
   // cv::dnn::LayerParams lp;
   // lp.name = "MaxPool";
   // lp.type = "Pooling";
@@ -302,21 +316,16 @@ cv::Mat inputBlob = blobFromNPY("input.npy");
   // cv::dnn::Net net;
   // net.addLayerToPrev(lp.name, lp.type, lp);
   //
-  // // int dim = 4;
-  // // int size[dim] = {20, 3, 50, 100};
-  // // cv::Mat inp(dim, size, CV_32FC1, cv::Scalar(10.5));
-  // // net.setInput(inp);
-  // // cv::Mat out = net.forward();
-  // //std::cout << out.size << '\n';
-  // //print_matrix(out, size);
-  //
+  // int dim = 4;
+  // int size[dim] = {20, 3, 50, 100};
+  // cv::Mat inp(dim, size, CV_32FC1, cv::Scalar(10.5));
+  // net.setInput(inp);
+  // cv::Mat out = net.forward();
+  // std::cout << out.size << '\n';
+  // print_matrix(out, size);
   // cv::Mat inputBlob = blobFromNPY("input.npy");
   // net.setInput(inputBlob);
   // cv::Mat output = net.forward();
-  std::cout << output.size << '\n';
-  cv::Mat outputBlob = blobFromNPY("output.npy");
-  std::cout << outputBlob.size << '\n';
-  double normL2 = cv::norm(output, outputBlob, cv::NORM_INF);
-  std::cout << "norm = " << normL2 << '\n';
+
   return 0;
 }

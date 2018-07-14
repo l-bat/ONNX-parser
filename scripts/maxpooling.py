@@ -5,7 +5,7 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 import numpy as np
 
-max_pool = nn.MaxPool2d(kernel_size=5, stride=1, padding=0, dilation=1)
+max_pool = nn.MaxPool2d((5,3), stride=1, padding=0, dilation=1)
 input = autograd.Variable(torch.randn(20, 3, 50, 100))
 output = max_pool(input)
 

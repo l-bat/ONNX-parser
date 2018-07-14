@@ -34,6 +34,6 @@ print(input.shape)
 np.save("data/input_conv", input)
 output = conv(input)
 print(output.shape)
-np.save("data/output_conv", output)
+np.save("data/output_conv", output.data)
 
 torch.onnx.export(conv, input, "model/convolution.onnx")
