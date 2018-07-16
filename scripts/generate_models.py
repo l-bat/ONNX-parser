@@ -62,7 +62,7 @@ np.save("data/input_2conv", input)
 output = conv2(input)
 print "Generate output for conv + conv with sizes", colored(output.shape, 'red')
 np.save("data/output_2conv", output.data)
-torch.onnx.export(conv, input, "model/conv2.onnx",  export_params=True)
+torch.onnx.export(conv2, input, "model/conv2.onnx",  export_params=True)
 
 
 maxpool2 = nn.Sequential(
@@ -75,4 +75,4 @@ print "Generate input for maxpool + maxpool with sizes", colored(input.shape, 'g
 np.save("data/input_2max_pool", input)
 print "Generate output for maxpool + maxpool with sizes", colored(output.shape, 'red')
 np.save("data/output_2max_pool", output)
-torch.onnx.export(model, input, "model/two_maxpool.onnx",  export_params=True)
+torch.onnx.export(maxpool2, input, "model/two_maxpool.onnx",  export_params=True)
