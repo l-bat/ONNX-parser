@@ -7,8 +7,9 @@ import numpy as np
 
 model = nn.Linear(3, 4, bias=True)
 
-
+torch.manual_seed(7)
 input = autograd.Variable(torch.randn(2, 3))
+print(input)
 print(input.shape)
 np.save("data/input_linear", input)
 
