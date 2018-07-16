@@ -11,24 +11,6 @@ void get_weight (const onnx::GraphProto& graph_proto) {
 		const onnx::TensorProto& tensor_proto = graph_proto.initializer(i);
 	  const onnx::TensorProto_DataType& datatype = tensor_proto.data_type();
 		int tensor_size  = 1;
-
-		for(int j = 0; j < tensor_proto.dims_size(); j++) {
-			tensor_size *= tensor_proto.dims(j);
-		}
-    std::cout << "Tensor: " << tensor_proto.name() << '\n';
-    std::cout << "Tensor size: " << tensor_size << '\n';
-
-    if(datatype == onnx::TensorProto_DataType_FLOAT) {
-      std::string raw_data_val = tensor_proto.raw_data();
-      std::cout << "data in tensor: " << '\n';
-      const char * val = raw_data_val.c_str();
-
-      for(int k = 0; k < tensor_size*4 - 4; k+=4) {
-				//float weight;
-				char b[] = {val[k], val[k+1], val[k+2], val[k+3]};
-        std::cout << "weight: " << b[0] << " " << b[1] << " " << b[2] << " " << b[3] << '\n';
-      }
-    }
   }
 }
 
