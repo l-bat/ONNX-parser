@@ -68,7 +68,7 @@ std::map<std::string, cv::Mat> get_weight (const onnx::GraphProto& graph_proto) 
   onnx::TensorProto tensor_proto;
   std::map<std::string, cv::Mat> map;
   onnx::TensorProto_DataType datatype;
-
+std::cout << "init size = " << graph_proto.initializer_size() <<'\n';
   for (int i = 0; i <  graph_proto.initializer_size(); i++) {
     tensor_proto = graph_proto.initializer(i);
     datatype = tensor_proto.data_type();
@@ -417,14 +417,40 @@ cv::dnn::Net create_net(const onnx::ModelProto& model_proto) {
     for(int i = 0; i < graph_proto.node_size(); i++) {
       node_proto = graph_proto.node(i);
       lp = get_lp(node_proto);
+      std::cout << "1" << '\n';
+      std::cout << "input size = " << node_proto.input_size() << '\n';
+
     //  layer_params = get_layer_params(node_proto);
-      weight = weights.find(graph_proto.initializer(i).name());
+
+    if(node_proto.input_size() > 1) {   // weights
+			//       node_proto.input(1);  // = 1
+      std::cout << "num node input = " << node_proto.input(1) << '\n';
+      int num = std::stoi(node_proto.input(1));
+      weight = weights.find(graph_proto.initializer(num -1).name());  // bug !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       if (weight != weights.end()) {
         lp.blobs.push_back(weight->second);
       }
-      //int output; //= std::stoi(node_proto.output());
-      //std::stringstream(node_proto.output()) >> output;
+		}
+
+		if(node_proto.input_size() > 2) {  // bias
+		// node_proto.input(2);  // = 2
+      int num = std::stoi(node_proto.input(2));
+      std::cout << "num node input = " << node_proto.input(2) << '\n';
+     weight = weights.find(graph_proto.initializer(num - 1).name());  // bug !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     if (weight != weights.end()) {
+       lp.blobs.push_back(weight->second);
+     }
+		}
+      // int num = std::stoi(node_proto.input(i));
+      // weight = weights.find(graph_proto.initializer( num ).name());  // bug
+      // if (weight != weights.end()) {
+      //   lp.blobs.push_back(weight->second);
+      // }
+      std::cout << "2" << '\n';
+
       lp.set("num_output", node_proto.output_size());
+
+
     //  std::cout << "num output = " << node_proto.output_size() << '\n';
     //  lp.type = (node_proto.attribute(i).name() == "MaxPool")? "Pooling" : node_proto.attribute(i).name();
       lp.name = node_proto.op_type() + "_" + std::to_string(i);
