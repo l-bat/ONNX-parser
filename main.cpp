@@ -62,13 +62,11 @@ cv::Mat blobFromNPY(const std::string& path) {
     return blob;
 }
 
-
-
-std::map<std::string, cv::Mat> get_weight (const onnx::GraphProto& graph_proto) {
+std::map<std::string, cv::Mat> get_weight(const onnx::GraphProto& graph_proto) {
   onnx::TensorProto tensor_proto;
   std::map<std::string, cv::Mat> map;
   onnx::TensorProto_DataType datatype;
-std::cout << "init size = " << graph_proto.initializer_size() <<'\n';
+  std::cout << "init size = " << graph_proto.initializer_size() <<'\n';
   for (int i = 0; i <  graph_proto.initializer_size(); i++) {
     tensor_proto = graph_proto.initializer(i);
     datatype = tensor_proto.data_type();
@@ -80,7 +78,10 @@ std::cout << "init size = " << graph_proto.initializer_size() <<'\n';
        }
        char* val = const_cast<char*>(tensor_proto.raw_data().c_str());
        cv::Mat blob(tensor_proto.dims_size(), sizes.data(), CV_32FC1, val);
-       std::cout << "blob size = " << blob.size() << '\n';
+       std::cout << "blob size = " << blob.size << '\n';
+
+       //CV_Assert(!bias || (blobs.size() == 2 && (size_t)numOutput == blobs[1].total()));
+
        map.insert(std::pair<std::string, cv::Mat>(tensor_proto.name(), blob.clone()));
     }
   }
@@ -180,10 +181,8 @@ void print_layer_params(const onnx::NodeProto& node_proto) {
   // for (int i = 0; i < node_proto.output_size(); i++) {
   //   std::cout << "Output: " << node_proto.output(i) << '\n';
   // }
-
   std::string layer_type = node_proto.op_type();
   std::cout << "layer type: " << layer_type << '\n';
-
   if(layer_type == "Conv") {
     std::cout << "_______convolution layer_______" << '\n';
     int pad_h, pad_w;
@@ -192,7 +191,6 @@ void print_layer_params(const onnx::NodeProto& node_proto) {
     int dilation_h, dilation_w;
 
     int group = -1;
-
   std::cout << "quantity of attribute = " << node_proto.attribute_size() << '\n';
   for(int i = 0; i < node_proto.attribute_size(); i++) {
     const onnx::AttributeProto& attribute_proto = node_proto.attribute(i);
@@ -355,16 +353,18 @@ std::unordered_map<std::string, int> get_layer_params(const onnx::NodeProto& nod
 
 cv::dnn::LayerParams get_lp(const onnx::NodeProto& node_proto) {
   cv::dnn::LayerParams lp;
-
   for(int i = 0; i < node_proto.attribute_size(); i++) {
     const onnx::AttributeProto& attribute_proto = node_proto.attribute(i);
     std::string attribute_name = attribute_proto.name();
     if (attribute_proto.has_i()) {
       lp.set(attribute_proto.name(), attribute_proto.i());
+    //  std::cout << attribute_proto.name() << " = " << attribute_proto.i() << '\n';
     } else if (attribute_proto.has_f()) {
       lp.set(attribute_proto.name(), attribute_proto.f());
+    //  std::cout << attribute_proto.name() << " = " << attribute_proto.f() << '\n';
     } else if (attribute_proto.has_s()) {
       lp.set(attribute_proto.name(), attribute_proto.s());
+  //    std::cout << attribute_proto.name() << " = " << attribute_proto.s() << '\n';
     } // else if (attribute_proto.has_t()) {
     //   lp.set(attribute_proto.name(), attribute_proto.t());
     // } else if (attribute_proto.has_g()) {
@@ -372,15 +372,24 @@ cv::dnn::LayerParams get_lp(const onnx::NodeProto& node_proto) {
     // }
     for (int i = 0; i < attribute_proto.floats_size(); i++) {
       lp.set(attribute_proto.name(), attribute_proto.floats(i));
+  //    std::cout << attribute_proto.name() << " = " << attribute_proto.floats(i) << '\n';
     }
     for (int i = 0; i < attribute_proto.ints_size(); i++) {
+    //  std::cout << attribute_proto.name() << " = " << attribute_proto.ints(i) << '\n';
       if(attribute_name == "kernel_shape") {
         lp.set("kernel_h",  attribute_proto.ints(0));
         lp.set("kernel_w",  attribute_proto.ints(1));
-      }
+      } else if(attribute_name == "strides") {
+        lp.set("stride_h",  attribute_proto.ints(0));
+        lp.set("stride_w",  attribute_proto.ints(1));
+      } else if(attribute_name == "pads") {
+        lp.set("pad_h",  attribute_proto.ints(0));
+        lp.set("pad_w",  attribute_proto.ints(1));
+      } else
       lp.set(attribute_proto.name(), attribute_proto.ints(i));
     }
     for (int i = 0; i < attribute_proto.strings_size(); i++) {
+    //  std::cout << attribute_proto.name() << " = " << attribute_proto.strings(i) << '\n';
       lp.set(attribute_proto.name(), attribute_proto.strings(i));
     }
     // for (int i = 0; i < attribute_proto.tensors_size(); i++) {
@@ -402,6 +411,8 @@ cv::dnn::LayerParams get_lp(const onnx::NodeProto& node_proto) {
   else {
     lp.type = node_proto.op_type();
   }
+  // std::cout << "Layer Params !!!!!!!!!!" << '\n';
+  // std::cout << lp << '\n';
   return lp;
 }
 
@@ -412,60 +423,63 @@ cv::dnn::Net create_net(const onnx::ModelProto& model_proto) {
     onnx::NodeProto node_proto;
     cv::dnn::LayerParams lp;
     std::map<std::string, cv::Mat> weights = get_weight(graph_proto);
-    std::map<std::string, cv::Mat>::iterator weight;
+    std::map<std::string, cv::Mat>::iterator weight, bias;
 
     for(int i = 0; i < graph_proto.node_size(); i++) {
       node_proto = graph_proto.node(i);
+
       lp = get_lp(node_proto);
-      std::cout << "1" << '\n';
+      lp.name = node_proto.op_type() + "_" + std::to_string(i);
+      std::cout << lp.name << '\n';
+
       std::cout << "input size = " << node_proto.input_size() << '\n';
 
-    //  layer_params = get_layer_params(node_proto);
+      // if (node_proto.input_size() > 1) {   // weights
+      //   std::cout << "num node input = " << node_proto.input(1) << '\n';
+      //   int num = std::stoi(node_proto.input(1));
+      //   weight = weights.find(graph_proto.initializer(num - 1).name());
+      //   if (weight != weights.end()) {
+      //     lp.blobs.push_back(weight->second);
+      //   }
+      //    lp.set("bias_term", false);
+      //  }
+  		// if(node_proto.input_size() > 2) {  // bias
+      //  lp.set("bias_term", true);
+      //  int num = std::stoi(node_proto.input(2));
+      //  std::cout << "num node input = " << node_proto.input(2) << '\n';
+      //  weight = weights.find(graph_proto.initializer(num - 1).name());
+      //  if (weight != weights.end()) {
+      //    lp.blobs.push_back(weight->second);
+      //  }
+  		// }
 
-    if(node_proto.input_size() > 1) {   // weights
-			//       node_proto.input(1);  // = 1
-      std::cout << "num node input = " << node_proto.input(1) << '\n';
-      int num = std::stoi(node_proto.input(1));
-      weight = weights.find(graph_proto.initializer(num -1).name());  // bug !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if (weight != weights.end()) {
-        lp.blobs.push_back(weight->second);
-      }
-		}
-
-		if(node_proto.input_size() > 2) {  // bias
-		// node_proto.input(2);  // = 2
-      int num = std::stoi(node_proto.input(2));
-      std::cout << "num node input = " << node_proto.input(2) << '\n';
-     weight = weights.find(graph_proto.initializer(num - 1).name());  // bug !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     if (weight != weights.end()) {
-       lp.blobs.push_back(weight->second);
-     }
-		}
-      // int num = std::stoi(node_proto.input(i));
-      // weight = weights.find(graph_proto.initializer( num ).name());  // bug
-      // if (weight != weights.end()) {
-      //   lp.blobs.push_back(weight->second);
-      // }
-      std::cout << "2" << '\n';
-
-      lp.set("num_output", node_proto.output_size());
-
-
-    //  std::cout << "num output = " << node_proto.output_size() << '\n';
-    //  lp.type = (node_proto.attribute(i).name() == "MaxPool")? "Pooling" : node_proto.attribute(i).name();
-      lp.name = node_proto.op_type() + "_" + std::to_string(i);
-      // if (node_proto.op_type() == "MaxPool") {
-      //   lp.type = "Pooling";
-      //   lp.set("pool", "MAX");
-      // } else if (node_proto.op_type() == "Gemm") {
-      //   lp.type = "InnerProduct";
-      // } else if (node_proto.op_type() == "Conv") {
-      //   lp.type = "Convolution";
-      // }
-      // else {
-      //   lp.type = node_proto.op_type();
-      // }
-      net.addLayerToPrev(lp.name, lp.type, lp);
+      if (node_proto.input_size() == 2) {   // weights
+        int num = std::stoi(node_proto.input(1));
+        weight = weights.find(graph_proto.initializer(num - 1).name());
+        if (weight != weights.end()) {
+          lp.blobs.push_back(weight->second);
+        }
+         lp.set("bias_term", false);
+        } else if(node_proto.input_size() > 2) {  // bias
+            lp.set("bias_term", true);
+            int num = std::stoi(node_proto.input(1));
+            weight = weights.find(graph_proto.initializer(num - 1).name());
+            if (weight != weights.end()) {
+              lp.blobs.push_back(weight->second);
+            }
+            num = std::stoi(node_proto.input(2));
+            bias =  weights.find(graph_proto.initializer(num - 1).name());
+            if (bias != weights.end()) {
+              lp.blobs.push_back(bias->second);
+            }
+            int num_output = static_cast<int> (lp.blobs[1].total());
+            lp.set("num_output", num_output);
+        //    std::cout << "blob dimensions = " << lp.blobs[0].dims << '\n';
+        //    std::cout << "__blobs size = " << lp.blobs[0].total() << '\n';
+       }
+          
+     //std::cout << "______Layer Params______" << '\n' << lp << '\n';
+     net.addLayerToPrev(lp.name, lp.type, lp);
     }
   }
   return net;
@@ -479,7 +493,7 @@ void parse_onnx_model(const onnx::ModelProto& model_proto) {
     graph_proto = model_proto.graph();
   }
   std::cout << "node size = " << graph_proto.node_size() << '\n';
-  get_weight(graph_proto);
+  //get_weight(graph_proto);
   for(int i = 0; i < graph_proto.node_size(); i++) {
       node_proto = graph_proto.node(i);
       std::cout << "node input = " << node_proto.input_size() <<'\n';
@@ -499,56 +513,36 @@ int main(int argc, char const *argv[]) {
   {
     std::fstream input(argv[1], ios::in | ios::binary);
     if (!input) {
-      std::cout << argv[1] << ": file not found. Creating a new file." << '\n';
+      std::cout << argv[1] << ": file not found." << '\n';
     } else if (!model_proto.ParseFromIstream(&input)) {
       std::cerr << "Failed to parse onnx model." << std::endl;
       return -1;
     }
   }
 
-  parse_onnx_model(model_proto);
-  google::protobuf::ShutdownProtobufLibrary();
+  //parse_onnx_model(model_proto);
 
-  onnx::GraphProto graph_proto = model_proto.graph();
-  std::unordered_map<std::string, int> params;
-  cv::dnn::LayerParams lp;
   cv::dnn::Net net;
   net = create_net(model_proto);
-
-  net.setInput(blobFromNPY(argv[2]));
-
+  cv::Mat input = blobFromNPY(argv[2]);
+  std::cout << input.size << '\n';
+  net.setInput(input);
   cv::Mat output = net.forward();
   std::cout << output.size << '\n';
+
   cv::Mat outputBlob = blobFromNPY(argv[3]);
   std::cout << outputBlob.size << '\n';
   double normL2 = cv::norm(output, outputBlob, cv::NORM_INF);
-  std::cout << "norm = " << normL2 << '\n';
+  std::cout << "norm = " << normL2 << '\n' << '\n'<< '\n' ;
 
-
-  // cv::dnn::LayerParams lp;
-  // lp.name = "MaxPool";
-  // lp.type = "Pooling";
-  // lp.set("kernel_h", params["kernel_h"]);
-  // lp.set("kernel_w", params["kernel_w"]);
-  // lp.set("pad_h", params["pad_h"]);
-  // lp.set("pad_w", params["pad_w"]);
-  // lp.set("stride_h", params["stride_h"]);
-  // lp.set("stride_w", params["stride_w"]);
-  // lp.set("pool", "MAX");
-  //
-  // cv::dnn::Net net;
-  // net.addLayerToPrev(lp.name, lp.type, lp);
-  //
   // int dim = 4;
   // int size[dim] = {20, 3, 50, 100};
   // cv::Mat inp(dim, size, CV_32FC1, cv::Scalar(10.5));
   // net.setInput(inp);
   // cv::Mat out = net.forward();
-  // std::cout << out.size << '\n';
-  // print_matrix(out, size);
   // cv::Mat inputBlob = blobFromNPY("input.npy");
   // net.setInput(inputBlob);
   // cv::Mat output = net.forward();
-
+  google::protobuf::ShutdownProtobufLibrary();
   return 0;
 }
