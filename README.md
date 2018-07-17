@@ -14,3 +14,8 @@ argv[3]: <path-to-output>/<output-data-name.npy>
 * Convolution
 * Linear (FullyConnected)
 * Sigmoid
+* ReLU
+* Dropout
+
+## Support Models
+* AlexNet
