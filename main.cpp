@@ -58,7 +58,7 @@ std::map<std::string, cv::Mat> get_weight(const onnx::GraphProto& graph_proto) {
   onnx::TensorProto tensor_proto;
   std::map<std::string, cv::Mat> layers_weights;
   onnx::TensorProto_DataType datatype;
-  std::cout << "init size = " << graph_proto.initializer_size() <<'\n';
+//  std::cout << "init size = " << graph_proto.initializer_size() <<'\n';
   for (int i = 0; i <  graph_proto.initializer_size(); i++) {
     tensor_proto = graph_proto.initializer(i);
     datatype = tensor_proto.data_type();
@@ -70,7 +70,7 @@ std::map<std::string, cv::Mat> get_weight(const onnx::GraphProto& graph_proto) {
        }
        char* val = const_cast<char*>(tensor_proto.raw_data().c_str());
        cv::Mat blob(tensor_proto.dims_size(), sizes.data(), CV_32FC1, val);
-       std::cout << "blob size = " << blob.size << '\n';
+      // std::cout << "blob size = " << blob.size << '\n';
        layers_weights.insert(std::pair<std::string, cv::Mat>(tensor_proto.name(), blob.clone()));
     }
   }
@@ -82,9 +82,11 @@ cv::dnn::LayerParams get_lp(const onnx::NodeProto& node_proto) {
   for(int i = 0; i < node_proto.attribute_size(); i++) {
     const onnx::AttributeProto& attribute_proto = node_proto.attribute(i);
     std::string attribute_name = attribute_proto.name();
+    //std::cout << attribute_name << '\n';
     if (attribute_proto.has_i()) {
       lp.set(attribute_proto.name(), attribute_proto.i());
     } else if (attribute_proto.has_f()) {
+      // if(attribute_name == "ratio") lp.set("dropout_ratio", attribute_proto.f());
       lp.set(attribute_proto.name(), attribute_proto.f());
     } else if (attribute_proto.has_s()) {
       lp.set(attribute_proto.name(), attribute_proto.s());
@@ -149,7 +151,7 @@ cv::dnn::Net create_net(const onnx::ModelProto& model_proto) {
       lp.name = node_proto.op_type() + "_" + std::to_string(i);
       std::cout << lp.name << '\n';
 
-      std::cout << "input size = " << node_proto.input_size() << '\n';
+    //  std::cout << "input size = " << node_proto.input_size() << '\n';
 
       if (node_proto.input_size() == 2) {   // weights
         int num = std::stoi(node_proto.input(1));

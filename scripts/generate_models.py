@@ -7,16 +7,25 @@ import numpy as np
 from termcolor import colored
 
 
+def save_data_and_model(name, input, model):
+    print name + " input has sizes" , colored(input.shape, 'red')
+    np.save("input_" + name, input.data)
+    output = model(input)
+    print name + " output has sizes" , colored(output.shape, 'red')
+    np.save("output_" + name, output.data)
+    torch.onnx.export(model, input, name + ".onnx", export_params=True)
+
 torch.manual_seed(7)
 
-input = autograd.Variable(torch.randn(20, 3, 50, 100))
-print "Generate input for maxpooling with sizes",  colored(colored(input.shape, 'green'), 'green')
+input = Variable(torch.randn(20, 3, 50, 100))
+#print "Generate input for maxpooling with sizes",  colored(input.shape, 'green')
 max_pool = nn.MaxPool2d(kernel_size=(5,3), stride=1, padding=0, dilation=1)
-output = max_pool(input)
-print"Maxpooling output has sizes" , colored(output.shape, 'red')
-np.save("data/input_maxpool", input)
-np.save("data/output_maxpool", output.data)
-torch.onnx.export(max_pool, input, "model/maxpooling.onnx", export_params=True)
+save_data_and_model("maxpool", input, max_pool)
+#output = max_pool(input)
+#print"Maxpooling output has sizes" , colored(output.shape, 'red')
+#np.save("data/input_maxpool", input)
+#np.save("data/output_maxpool", output.data)
+#torch.onnx.export(max_pool, input, "model/maxpooling.onnx", export_params=True)
 
 
 conv = nn.Conv2d(3, 16, kernel_size=5, stride=1, padding=0)
@@ -74,5 +83,30 @@ output = maxpool2(input)
 print "Generate input for maxpool + maxpool with sizes", colored(input.shape, 'green')
 np.save("data/input_2max_pool", input)
 print "Generate output for maxpool + maxpool with sizes", colored(output.shape, 'red')
-np.save("data/output_2max_pool", output)
+np.save("data/output_2max_pool", output.data)
 torch.onnx.export(maxpool2, input, "model/two_maxpool.onnx",  export_params=True)
+
+
+relu = nn.ReLU(inplace=True)
+input = autograd.Variable(torch.randn(1, 64, 55, 55))
+print "Generate input for ReLU with sizes", colored(input.shape, 'green')
+np.save("data/input_relu", input)
+output = relu(input)
+print "Generate output for  ReLU with sizes", colored(output.shape, 'red')
+np.save("data/output_relu", output.data)
+torch.onnx.export(relu, input, "model/relu.onnx", export_params=True)
+
+
+dropout = nn.Dropout()
+dropout.eval()
+#input = autograd.Variable(torch.randn(1, 256, 6, 6))
+input = autograd.Variable(torch.randn(2, 3))
+print "Generate input for Dropout with sizes", colored(input.shape, 'green')
+print(input)
+np.save("data/input_dropout", input)
+output = dropout(input)
+print "Generate output for Dropout with sizes", colored(output.shape, 'red')
+print(output.data)
+print(np.divide(output.data, input))
+np.save("data/output_dropout", output.data)
+torch.onnx.export(dropout, input, "model/dropout.onnx", export_params=True)
